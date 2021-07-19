@@ -50,6 +50,7 @@ const GuiControl = function () {
         'sensors',
         'servos',
         'vtx',
+        'lite_radio'
     ];
 
     this.allowedTabs = this.defaultAllowedTabsWhenDisconnected;

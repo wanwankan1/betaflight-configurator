@@ -392,6 +392,9 @@ function startProcess() {
                     case 'cli':
                         TABS.cli.initialize(content_ready, GUI.nwGui);
                         break;
+                    case 'lite_radio':
+                        TABS.lite_radio.initialize(content_ready);
+                        break;
 
                     default:
                         console.log(`Tab not found: ${tab}`);
