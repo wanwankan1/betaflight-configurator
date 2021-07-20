@@ -271,8 +271,8 @@ function startProcess() {
             }
 
             GUI.tab_switch_in_progress = true;
-
             GUI.tab_switch_cleanup(function () {
+                
                 // disable active firmware flasher if it was active
                 if ($('div#flashbutton a.flash_state').hasClass('active') && $('div#flashbutton a.flash').hasClass('active')) {
                     $('div#flashbutton a.flash_state').removeClass('active');

@@ -70,93 +70,101 @@ TABS.lite_radio.initialize = function (callback) {
         // translate to user-selected language
         i18n.localizePage();
 
-        if (semver.lt(FC.CONFIG.apiVersion, "1.15.0")) {
-            $('.deadband').hide();
-        } else {
-            $('.deadband input[name="yaw_deadband"]').val(FC.RC_DEADBAND_CONFIG.yaw_deadband);
-            $('.deadband input[name="deadband"]').val(FC.RC_DEADBAND_CONFIG.deadband);
-            $('.deadband input[name="3ddeadbandthrottle"]').val(FC.RC_DEADBAND_CONFIG.deadband3d_throttle);
-
-            $('.deadband input[name="deadband"]').change(function () {
-                tab.deadband = parseInt($(this).val());
-            }).change();
-            $('.deadband input[name="yaw_deadband"]').change(function () {
-                tab.yawDeadband = parseInt($(this).val());
-            }).change();
-        }
-
-        if (semver.lt(FC.CONFIG.apiVersion, "1.15.0")) {
-            $('.sticks').hide();
-        } else {
-            $('.sticks input[name="stick_min"]').val(FC.RX_CONFIG.stick_min);
-            $('.sticks input[name="stick_center"]').val(FC.RX_CONFIG.stick_center);
-            $('.sticks input[name="stick_max"]').val(FC.RX_CONFIG.stick_max);
-        }
-
-        if (semver.gte(FC.CONFIG.apiVersion, "1.20.0")) {
-            $('select[name="rcInterpolation-select"]').val(FC.RX_CONFIG.rcInterpolation);
-            $('input[name="rcInterpolationInterval-number"]').val(FC.RX_CONFIG.rcInterpolationInterval);
-
-            $('select[name="rcInterpolation-select"]').change(function () {
-                tab.updateRcInterpolationParameters();
-            }).change();
-        } else {
-            $('.tab-lite-radio div.rcInterpolation').hide();
-        }
-
         // generate bars
         const bar_names = [
-            i18n.getMessage('controlAxisRoll'),
-            i18n.getMessage('controlAxisPitch'),
-            i18n.getMessage('controlAxisYaw'),
-            i18n.getMessage('controlAxisThrottle')
+            'CH1',
+            'CH2',
+            'CH3',
+            'CH4',
+            'CH5',
+            'CH6',
+            'CH7',
+            'CH8'
         ];
 
         const barContainer = $('.tab-lite-radio .bars');
         let auxIndex = 1;
 
-        const numBars = (FC.RC.active_channels > 0) ? FC.RC.active_channels : 8;
+        const numBars =  8;
 
         for (let i = 0; i < numBars; i++) {
-            let name;
-            if (i < bar_names.length) {
-                name = bar_names[i];
-            } else {
-                name = i18n.getMessage("controlAxisAux" + (auxIndex++));
-            }
+            let name = bar_names[i];
+
 
             barContainer.append('\
                 <ul>\
                     <li class="name">' + name + '</li>\
                     <li class="meter">\
                         <div class="meter-bar">\
-                            <div class="label"></div>\
                             <div class="fill' + (FC.RC.active_channels == 0 ? 'disabled' : '') + '">\
-                                <div class="label"></div>\
                             </div>\
                         </div>\
                     </li>\
+                    <li class="value">\
+                        <div class="label">100</div>\
+                    </li>\
+                    <li class="name"> Reverse </li>\
+                    <li class="check">\
+                        <input name="reverse" type="checkbox" value="" />\
+                    </li>\
+                    <li class="name"> INPUT </li>\
+                    <li class="select">\
+                        <select name="bar-type">\
+                            <option value="aileron">Aileron</option>\
+                            <option value="elevator">Elevator</option>\
+                            <option value="throttle">Throttle</option>\
+                            <option value="rudder">Rudder</option>\
+                            <option value="sa">SA</option>\
+                            <option value="sb">SB</option>\
+                            <option value="sc">SC</option>\
+                            <option value="sd">SD</option>\
+                        </select>\
+                    </li>\
+                    <li class="name"> Weight </li>\
+                    <li class="select">\
+                        <select name="weight">\
+                            <option value="50">50</option>\
+                            <option value="100" selected="selected">100</option>\
+                            <option value="200">200</option>\
+                            <option value="300">300</option>\
+                            <option value="2200">2200</option>\
+                        </select>\
+                    <li class="name"> Offset </li>\
+                    <li class="select">\
+                        <select name="offset">\
+                            <option value="-100">-100 %</option>\
+                            <option value="-75">-75 %</option>\
+                            <option value="-50">-50 %</option>\
+                            <option value="-25" >-25 %</option>\
+                            <option value="0" selected="selected">0 %</option>\
+                            <option value="25" >25 %</option>\
+                            <option value="50">50 %</option>\
+                            <option value="75">75 %</option>\
+                            <option value="100">100 %</option>\
+                        </select>\
+                    </li>\
                 </ul>\
             ');
+            barContainer.find('ul').eq(i).find('select[name="bar-type"]').children().eq(i).prop('selected','selected');
         }
-
         // we could probably use min and max throttle for the range, will see
         const meterScale = {
-            'min': 800,
-            'max': 2200
+            'min': [800,800,800,800,800,800,800,800],
+            'max': [2200,2200,2200,2200,2200,2200,2200,2200]
         };
-
+        const offset = {
+            'value': [0,0,0,0,0,0,0,0]
+        }
         const meterFillArray = [];
         $('.meter .fill', barContainer).each(function () {
             meterFillArray.push($(this));
         });
-
         const meterLabelArray = [];
-        $('.meter', barContainer).each(function () {
-            meterLabelArray.push($('.label' , this));
+        $('.value', barContainer).each(function () {
+            meterLabelArray.push($('.label', this));
         });
-
         // correct inner label margin on window resize (i don't know how we could do this in css)
+        /*
         tab.resize = function () {
             const containerWidth = $('.meter:first', barContainer).width(),
                 labelWidth = $('.meter .label:first', barContainer).width(),
@@ -168,667 +176,67 @@ TABS.lite_radio.initialize = function (callback) {
         };
 
         $(window).on('resize', tab.resize).resize(); // trigger so labels get correctly aligned on creation
+        */
 
-        // handle rcmap & rssi aux channel
-        let rcMapLetters = ['A', 'E', 'R', 'T', '1', '2', '3', '4'];
-
-        let strBuffer = [];
-        for (let i = 0; i < FC.RC_MAP.length; i++) {
-            strBuffer[FC.RC_MAP[i]] = rcMapLetters[i];
+        function get_rc_refresh_data() {
+            MSP.send_message(MSPCodes.MSP_RC, false, false, update_ui);
         }
 
-        // reconstruct
-        const str = strBuffer.join('');
+        function update_ui() {
 
-        // set current value
-        $('input[name="rcmap"]').val(str);
+            if (FC.RC.active_channels > 0) {
 
-        // validation / filter
-        const lastValid = str;
+                // update bars with latest data
 
-        $('input[name="rcmap"]').on('input', function () {
-            let val = $(this).val();
-
-            // limit length to max 8
-            if (val.length > 8) {
-                val = val.substr(0, 8);
-                $(this).val(val);
-            }
-        });
-
-        $('input[name="rcmap"]').focusout(function () {
-            const val = $(this).val();
-            strBuffer = val.split('');
-            const duplicityBuffer = [];
-
-            if (val.length != 8) {
-                $(this).val(lastValid);
-                return false;
-            }
-
-            // check if characters inside are all valid, also check for duplicity
-            for (let i = 0; i < val.length; i++) {
-                if (rcMapLetters.indexOf(strBuffer[i]) < 0) {
-                    $(this).val(lastValid);
-                    return false;
+                for (let i = 0; i < FC.RC.active_channels; i++) {
+                    var realOffset=offset.value[i]*0.01*2*meterScale.max[i];
+                    meterFillArray[i].css('width', ((FC.RC.channels[i] - (meterScale.min[i]+realOffset)) / (meterScale.max[i] - meterScale.min[i]) * 100).clamp(0, 100)+ '%');
+                    var left=parseInt(meterScale.min[i],10)+realOffset;
+                    var right=parseInt(meterScale.max[i],10)+realOffset;
+                    meterLabelArray[i].text(FC.RC.channels[i]+'('+left+','+right+')');
                 }
-
-                if (duplicityBuffer.indexOf(strBuffer[i]) < 0) {
-                    duplicityBuffer.push(strBuffer[i]);
-                } else {
-                    $(this).val(lastValid);
-                    return false;
-                }
-            }
-        });
-
-        // handle helper
-        $('select[name="rcmap_helper"]').val(0); // go out of bounds
-        $('select[name="rcmap_helper"]').change(function () {
-            $('input[name="rcmap"]').val($(this).val());
-        });
-
-        // rssi
-        const rssi_channel_e = $('select[name="rssi_channel"]');
-        rssi_channel_e.append(`<option value="0">${i18n.getMessage("receiverRssiChannelDisabledOption")}</option>`);
-        //1-4 reserved for Roll Pitch Yaw & Throttle, starting at 5
-        for (let i = 5; i < FC.RC.active_channels + 1; i++) {
-            rssi_channel_e.append(`<option value="${i}">${i18n.getMessage("controlAxisAux" + (i-4))}</option>`);
-        }
-
-        $('select[name="rssi_channel"]').val(FC.RSSI_CONFIG.channel);
-
-        const serialRxSelectElement = $('select.serialRX');
-        FC.getSerialRxTypes().forEach((serialRxType, index) => {
-            serialRxSelectElement.append(`<option value="${index}">${serialRxType}</option>`);
-        });
-
-        serialRxSelectElement.change(function () {
-            const serialRxValue = parseInt($(this).val());
-
-            let newValue;
-            if (serialRxValue !== FC.RX_CONFIG.serialrx_provider) {
-                newValue = $(this).find('option:selected').text();
-                updateSaveButton(true);
-            }
-            tab.analyticsChanges['SerialRx'] = newValue;
-
-            FC.RX_CONFIG.serialrx_provider = serialRxValue;
-        });
-
-        // select current serial RX type
-        serialRxSelectElement.val(FC.RX_CONFIG.serialrx_provider);
-
-        if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_31)) {
-            const spiRxTypes = [
-                'NRF24_V202_250K',
-                'NRF24_V202_1M',
-                'NRF24_SYMA_X',
-                'NRF24_SYMA_X5C',
-                'NRF24_CX10',
-                'CX10A',
-                'NRF24_H8_3D',
-                'NRF24_INAV',
-                'FRSKY_D',
-            ];
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_37)) {
-                spiRxTypes.push(
-                    'FRSKY_X',
-                    'A7105_FLYSKY',
-                    'A7105_FLYSKY_2A',
-                    'NRF24_KN'
-                );
-            }
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_41)) {
-                spiRxTypes.push(
-                    'SFHSS',
-                    'SPEKTRUM',
-                    'FRSKY_X_LBT'
-                );
-            }
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_43)) {
-                spiRxTypes.push(
-                    'REDPINE'
-                );
-            }
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_44)) {
-                spiRxTypes.push(
-                    'FRSKY_X_V2',
-                    'FRSKY_X_LBT_V2'
-                );
-            }
-
-            const spiRxElement = $('select.spiRx');
-            for (let i = 0; i < spiRxTypes.length; i++) {
-                spiRxElement.append(`<option value="${i}">${spiRxTypes[i]}</option>`);
-            }
-
-            spiRxElement.change(function () {
-                const value = parseInt($(this).val());
-
-                let newValue = undefined;
-                if (value !== FC.RX_CONFIG.rxSpiProtocol) {
-                    newValue = $(this).find('option:selected').text();
-                    updateSaveButton(true);
-                }
-                tab.analyticsChanges['SPIRXProtocol'] = newValue;
-
-                FC.RX_CONFIG.rxSpiProtocol = value;
-            });
-
-            // select current serial RX type
-            spiRxElement.val(FC.RX_CONFIG.rxSpiProtocol);
-        }
-
-
-        // UI Hooks
-
-        function updateSaveButton(reboot=false) {
-            if (reboot) {
-                tab.needReboot = true;
-            }
-            if (tab.needReboot) {
-                $('.update_btn').hide();
-                $('.save_btn').show();
-            } else {
-                $('.update_btn').show();
-                $('.save_btn').hide();
             }
         }
-
-        $('input.feature', featuresElement).change(function () {
-            const element = $(this);
-
-            FC.FEATURE_CONFIG.features.updateData(element);
-            updateTabList(FC.FEATURE_CONFIG.features);
-
-            if (element.attr('name') === "RSSI_ADC") {
-                updateSaveButton(true);
-            }
+        //when reverse
+        $('.tab-lite-radio .check input').change(function () {
+            var temp=$(this).parent().parent().find('div.fill');
+            if($(this).prop('checked')==true)
+                temp.css('float', "right");
+            else
+                temp.css('float', "left");
         });
-
-        function checkShowSerialRxBox() {
-            if (FC.FEATURE_CONFIG.features.isEnabled('RX_SERIAL')) {
-                $('div.serialRXBox').show();
-            } else {
-                $('div.serialRXBox').hide();
-            }
-        }
-
-        function checkShowSpiRxBox() {
-            if (FC.FEATURE_CONFIG.features.isEnabled('RX_SPI')) {
-                $('div.spiRxBox').show();
-            } else {
-                $('div.spiRxBox').hide();
-            }
-        }
-
-        $(featuresElement).filter('select').change(function () {
-            const element = $(this);
-            FC.FEATURE_CONFIG.features.updateData(element);
-            updateTabList(FC.FEATURE_CONFIG.features);
-            if (element.attr('name') === 'rxMode') {
-                checkShowSerialRxBox();
-                checkShowSpiRxBox();
-                updateSaveButton(true);
-            }
+        //change weight
+        $('.tab-lite-radio select[name="weight"]').change(function(){
+            var tempweight=$(this).val();
+            var id=$(this).parent().parent().index();
+            meterScale.min[id]=-tempweight;
+            meterScale.max[id]=tempweight;
         });
-
-        checkShowSerialRxBox();
-        checkShowSpiRxBox();
-        updateSaveButton();
-
-        $('a.refresh').click(function () {
-            tab.refresh(function () {
-                GUI.log(i18n.getMessage('receiverDataRefreshed'));
-            });
+        //offset
+        $('.tab-lite-radio select[name="offset"]').change(function(){
+            var tempoffset=$(this).val();
+            var id=$(this).parent().parent().index();
+            offset.value[id]=tempoffset;
         });
-
-        function saveConfiguration(boot=false) {
-
-            if (semver.gte(FC.CONFIG.apiVersion, "1.15.0")) {
-                FC.RX_CONFIG.stick_max = parseInt($('.sticks input[name="stick_max"]').val());
-                FC.RX_CONFIG.stick_center = parseInt($('.sticks input[name="stick_center"]').val());
-                FC.RX_CONFIG.stick_min = parseInt($('.sticks input[name="stick_min"]').val());
-                FC.RC_DEADBAND_CONFIG.yaw_deadband = parseInt($('.deadband input[name="yaw_deadband"]').val());
-                FC.RC_DEADBAND_CONFIG.deadband = parseInt($('.deadband input[name="deadband"]').val());
-                FC.RC_DEADBAND_CONFIG.deadband3d_throttle = ($('.deadband input[name="3ddeadbandthrottle"]').val());
-            }
-
-            // catch rc map
-            rcMapLetters = ['A', 'E', 'R', 'T', '1', '2', '3', '4'];
-            strBuffer = $('input[name="rcmap"]').val().split('');
-
-            for (let i = 0; i < FC.RC_MAP.length; i++) {
-                FC.RC_MAP[i] = strBuffer.indexOf(rcMapLetters[i]);
-            }
-
-            // catch rssi aux
-            FC.RSSI_CONFIG.channel = parseInt($('select[name="rssi_channel"]').val());
-
-
-            if (semver.gte(FC.CONFIG.apiVersion, "1.20.0")) {
-                FC.RX_CONFIG.rcInterpolation = parseInt($('select[name="rcInterpolation-select"]').val());
-                FC.RX_CONFIG.rcInterpolationInterval = parseInt($('input[name="rcInterpolationInterval-number"]').val());
-            }
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_40)) {
-                FC.RX_CONFIG.rcSmoothingInputCutoff = parseInt($('input[name="rcSmoothingInputHz-number"]').val());
-                FC.RX_CONFIG.rcSmoothingDerivativeCutoff = parseInt($('input[name="rcSmoothingDerivativeCutoff-number"]').val());
-                FC.RX_CONFIG.rcSmoothingDerivativeType = parseInt($('select[name="rcSmoothingDerivativeType-select"]').val());
-                FC.RX_CONFIG.rcInterpolationChannels = parseInt($('select[name="rcSmoothingChannels-select"]').val());
-                FC.RX_CONFIG.rcSmoothingInputType = parseInt($('select[name="rcSmoothingInputType-select"]').val());
-            }
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_42)) {
-                FC.RX_CONFIG.rcSmoothingAutoSmoothness = parseInt($('input[name="rcSmoothingAutoSmoothness-number"]').val());
-            }
-
-            function save_rssi_config() {
-                MSP.send_message(MSPCodes.MSP_SET_RSSI_CONFIG, mspHelper.crunch(MSPCodes.MSP_SET_RSSI_CONFIG), false, save_rc_configs);
-            }
-
-            function save_rc_configs() {
-                const nextCallback = save_rx_config;
-                if (semver.gte(FC.CONFIG.apiVersion, "1.15.0")) {
-                    MSP.send_message(MSPCodes.MSP_SET_RC_DEADBAND, mspHelper.crunch(MSPCodes.MSP_SET_RC_DEADBAND), false, nextCallback);
-                } else {
-                    nextCallback();
-                }
-            }
-
-            function save_rx_config() {
-                const nextCallback = (boot) ? save_feature_config : save_to_eeprom;
-                if (semver.gte(FC.CONFIG.apiVersion, "1.20.0")) {
-                    MSP.send_message(MSPCodes.MSP_SET_RX_CONFIG, mspHelper.crunch(MSPCodes.MSP_SET_RX_CONFIG), false, nextCallback);
-                } else {
-                    nextCallback();
-                }
-            }
-
-            function save_feature_config() {
-                MSP.send_message(MSPCodes.MSP_SET_FEATURE_CONFIG, mspHelper.crunch(MSPCodes.MSP_SET_FEATURE_CONFIG), false, save_to_eeprom);
-            }
-
-            function save_to_eeprom() {
-                MSP.send_message(MSPCodes.MSP_EEPROM_WRITE, false, false, reboot);
-            }
-
-            function reboot() {
-                GUI.log(i18n.getMessage('configurationEepromSaved'));
-                if (boot) {
-                    GUI.tab_switch_cleanup(function() {
-                        MSP.send_message(MSPCodes.MSP_SET_REBOOT, false, false);
-                        reinitialiseConnection(tab);
-                    });
-                }
-            }
-
-            analytics.sendChangeEvents(analytics.EVENT_CATEGORIES.FLIGHT_CONTROLLER, tab.analyticsChanges);
-            tab.analyticsChanges = {};
-
-            MSP.send_message(MSPCodes.MSP_SET_RX_MAP, mspHelper.crunch(MSPCodes.MSP_SET_RX_MAP), false, save_rssi_config);
-        }
-
-        $('a.update').click(function () {
-            saveConfiguration(false);
-        });
-
-        $('a.save').click(function () {
-            saveConfiguration(true);
-            tab.needReboot = false;
-        });
-
-        $("a.sticks").click(function() {
-            const windowWidth = 370;
-            const windowHeight = 510;
-
-            chrome.app.window.create("/tabs/receiver_msp.html", {
-                id: "receiver_msp",
-                innerBounds: {
-                    minWidth: windowWidth, minHeight: windowHeight,
-                    width: windowWidth, height: windowHeight,
-                    maxWidth: windowWidth, maxHeight: windowHeight
-                },
-                alwaysOnTop: true
-            }, function(createdWindow) {
-                // Give the window a callback it can use to send the channels (otherwise it can't see those objects)
-                createdWindow.contentWindow.setRawRx = function(channels) {
-                    if (CONFIGURATOR.connectionValid && GUI.active_tab != 'cli') {
-                        mspHelper.setRawRx(channels);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                };
-
-                windowWatcherUtil.passValue(createdWindow, 'darkTheme', DarkTheme.isDarkThemeEnabled(DarkTheme.configEnabled));
-
-            });
-        });
-
-        let showBindButton = false;
-        if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_43)) {
-            showBindButton = bit_check(FC.CONFIG.targetCapabilities, FC.TARGET_CAPABILITIES_FLAGS.SUPPORTS_RX_BIND);
-
-            $("a.bind").click(function() {
-                MSP.send_message(MSPCodes.MSP2_BETAFLIGHT_BIND);
-
-                GUI.log(i18n.getMessage('receiverButtonBindMessage'));
-            });
-        }
-        $(".bind_btn").toggle(showBindButton);
-
-        // RC Smoothing
-        if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_40)) {
-            $('.tab-lite-radio .rcSmoothing').show();
-
-            const rc_smoothing_protocol_e = $('select[name="rcSmoothing-select"]');
-            rc_smoothing_protocol_e.change(function () {
-                FC.RX_CONFIG.rcSmoothingType = $(this).val();
-                updateInterpolationView();
-            });
-            rc_smoothing_protocol_e.val(FC.RX_CONFIG.rcSmoothingType);
-
-            const rcSmoothingNumberElement = $('input[name="rcSmoothingInputHz-number"]');
-            const rcSmoothingDerivativeNumberElement = $('input[name="rcSmoothingDerivativeCutoff-number"]');
-            rcSmoothingNumberElement.val(FC.RX_CONFIG.rcSmoothingInputCutoff);
-            rcSmoothingDerivativeNumberElement.val(FC.RX_CONFIG.rcSmoothingDerivativeCutoff);
-            $('.tab-lite-radio .rcSmoothing-input-cutoff').show();
-            $('select[name="rcSmoothing-input-manual-select"]').val("1");
-            if (FC.RX_CONFIG.rcSmoothingInputCutoff == 0) {
-                $('.tab-lite-radio .rcSmoothing-input-cutoff').hide();
-                $('select[name="rcSmoothing-input-manual-select"]').val("0");
-            }
-            $('select[name="rcSmoothing-input-manual-select"]').change(function () {
-                if ($(this).val() == 0) {
-                    rcSmoothingNumberElement.val(0);
-                    $('.tab-lite-radio .rcSmoothing-input-cutoff').hide();
-                }
-                if ($(this).val() == 1) {
-                    rcSmoothingNumberElement.val(FC.RX_CONFIG.rcSmoothingInputCutoff);
-                    $('.tab-lite-radio .rcSmoothing-input-cutoff').show();
-                }
-            }).change();
-
-            $('.tab-lite-radio .rcSmoothing-derivative-cutoff').show();
-            $('select[name="rcSmoothing-input-derivative-select"]').val("1");
-            if (FC.RX_CONFIG.rcSmoothingDerivativeCutoff == 0) {
-                $('select[name="rcSmoothing-input-derivative-select"]').val("0");
-                $('.tab-lite-radio .rcSmoothing-derivative-cutoff').hide();
-            }
-            $('select[name="rcSmoothing-input-derivative-select"]').change(function () {
-                if ($(this).val() == 0) {
-                    $('.tab-lite-radio .rcSmoothing-derivative-cutoff').hide();
-                    rcSmoothingDerivativeNumberElement.val(0);
-                }
-                if ($(this).val() == 1) {
-                    $('.tab-lite-radio .rcSmoothing-derivative-cutoff').show();
-                    rcSmoothingDerivativeNumberElement.val(FC.RX_CONFIG.rcSmoothingDerivativeCutoff);
-                }
-            }).change();
-
-            const rcSmoothingDerivativeType = $('select[name="rcSmoothingDerivativeType-select"]');
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_43)) {
-                rcSmoothingDerivativeType.append($(`<option value="3">${i18n.getMessage("receiverRcSmoothingDerivativeTypeAuto")}</option>`));
-            }
-
-            rcSmoothingDerivativeType.val(FC.RX_CONFIG.rcSmoothingDerivativeType);
-            const rcSmoothingChannels = $('select[name="rcSmoothingChannels-select"]');
-            rcSmoothingChannels.val(FC.RX_CONFIG.rcInterpolationChannels);
-            const rcSmoothingInputType = $('select[name="rcSmoothingInputType-select"]');
-            rcSmoothingInputType.val(FC.RX_CONFIG.rcSmoothingInputType);
-
-            if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_42)) {
-                $('select[name="rcSmoothing-input-manual-select"], select[name="rcSmoothing-input-derivative-select"]').change(function() {
-                    if ($('select[name="rcSmoothing-input-manual-select"]').val() == 0 || $('select[name="rcSmoothing-input-derivative-select"]').val() == 0) {
-                        $('.tab-lite-radio .rcSmoothing-auto-smoothness').show();
-                    } else {
-                        $('.tab-lite-radio .rcSmoothing-auto-smoothness').hide();
-                    }
-                });
-                $('select[name="rcSmoothing-input-manual-select"]').change();
-
-                const rcSmoothingAutoSmoothness = $('input[name="rcSmoothingAutoSmoothness-number"]');
-                rcSmoothingAutoSmoothness.val(FC.RX_CONFIG.rcSmoothingAutoSmoothness);
-            } else {
-                $('.tab-lite-radio .rcSmoothing-auto-smoothness').hide();
-            }
-
-            updateInterpolationView();
-        } else {
-            $('.tab-lite-radio .rcInterpolation').show();
-            $('.tab-lite-radio .rcSmoothing-derivative-cutoff').hide();
-            $('.tab-lite-radio .rcSmoothing-input-cutoff').hide();
-            $('.tab-lite-radio .rcSmoothing-derivative-type').hide();
-            $('.tab-lite-radio .rcSmoothing-input-type').hide();
-            $('.tab-lite-radio .rcSmoothing-derivative-manual').hide();
-            $('.tab-lite-radio .rcSmoothing-input-manual').hide();
-            $('.tab-lite-radio .rc-smoothing-type').hide();
-            $('.tab-lite-radio .rcSmoothing-auto-smoothness').hide();
-        }
-
-        if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_44)) {
-            $('.tab-lite-radio .rcSmoothing-derivative-type').hide();
-            $('.tab-lite-radio .rcSmoothing-input-type').hide();
-            $('.tab-lite-radio input[name="rcSmoothingAutoSmoothness-number"]').attr("max", "250");
-        }
-
-        // Only show the MSP control sticks if the MSP Rx feature is enabled
-        $(".sticks_btn").toggle(FC.FEATURE_CONFIG.features.isEnabled('RX_MSP'));
-
-        const labelsChannelData = {
-            ch1: [],
-            ch2: [],
-            ch3: [],
-            ch4: [],
-        };
-
-        $(`.plot_control .ch1, .plot_control .ch2, .plot_control .ch3, .plot_control .ch4`).each(function (){
-            const element = $(this);
-            if (element.hasClass('ch1')){
-                labelsChannelData.ch1.push(element);
-            } else if (element.hasClass('ch2')){
-                labelsChannelData.ch2.push(element);
-            } else if (element.hasClass('ch3')){
-                labelsChannelData.ch3.push(element);
-            } else if (element.hasClass('ch4')){
-                labelsChannelData.ch4.push(element);
-            }
-        });
-
-        let plotUpdateRate;
-        const rxRefreshRate = $('select[name="rx_refresh_rate"]');
-
-        $('a.reset_rate').click(function () {
-            plotUpdateRate = 50;
-            rxRefreshRate.val(plotUpdateRate).change();
-        });
-
-        rxRefreshRate.change(function () {
-            plotUpdateRate = parseInt($(this).val(), 10);
-
-            // save update rate
-            ConfigStorage.set({'rx_refresh_rate': plotUpdateRate});
-
-            function get_rc_refresh_data() {
-                MSP.send_message(MSPCodes.MSP_RC, false, false, update_ui);
-            }
-
-            // setup plot
-            const rxPlotData = new Array(FC.RC.active_channels);
-            for (let i = 0; i < rxPlotData.length; i++) {
-                rxPlotData[i] = [];
-            }
-
-            let samples = 0;
-            const svg = d3.select("svg");
-            const RX_plot_e = $('#RX_plot');
-            const margin = {top: 20, right: 0, bottom: 10, left: 40};
-            let width, height, widthScale, heightScale;
-
-            function update_receiver_plot_size() {
-                width = RX_plot_e.width() - margin.left - margin.right;
-                height = RX_plot_e.height() - margin.top - margin.bottom;
-
-                widthScale.range([0, width]);
-                heightScale.range([height, 0]);
-            }
-
-            function update_ui() {
-
-                if (FC.RC.active_channels > 0) {
-
-                    // update bars with latest data
-                    for (let i = 0; i < FC.RC.active_channels; i++) {
-                        meterFillArray[i].css('width', ((FC.RC.channels[i] - meterScale.min) / (meterScale.max - meterScale.min) * 100).clamp(0, 100) + '%');
-                        meterLabelArray[i].text(FC.RC.channels[i]);
-                    }
-
-                    labelsChannelData.ch1[0].text(FC.RC.channels[0]);
-                    labelsChannelData.ch2[0].text(FC.RC.channels[1]);
-                    labelsChannelData.ch3[0].text(FC.RC.channels[2]);
-                    labelsChannelData.ch4[0].text(FC.RC.channels[3]);
-
-                    // push latest data to the main array
-                    for (let i = 0; i < FC.RC.active_channels; i++) {
-                        rxPlotData[i].push([samples, FC.RC.channels[i]]);
-                    }
-
-                    // Remove old data from array
-                    while (rxPlotData[0].length > 300) {
-                        for (let i = 0; i < rxPlotData.length; i++) {
-                            rxPlotData[i].shift();
-                        }
-                    }
-
-                }
-
-                // update required parts of the plot
-                widthScale = d3.scale.linear().
-                    domain([(samples - 299), samples]);
-
-                heightScale = d3.scale.linear().
-                    domain([800, 2200]);
-
-                update_receiver_plot_size();
-
-                const xGrid = d3.svg.axis().
-                    scale(widthScale).
-                    orient("bottom").
-                    tickSize(-height, 0, 0).
-                    tickFormat("");
-
-                const yGrid = d3.svg.axis().
-                    scale(heightScale).
-                    orient("left").
-                    tickSize(-width, 0, 0).
-                    tickFormat("");
-
-                const xAxis = d3.svg.axis().
-                    scale(widthScale).
-                    orient("bottom").
-                    tickFormat(function (d) {return d;});
-
-                const yAxis = d3.svg.axis().
-                    scale(heightScale).
-                    orient("left").
-                    tickFormat(function (d) {return d;});
-
-                const line = d3.svg.line().
-                    x(function (d) {return widthScale(d[0]);}).
-                    y(function (d) {return heightScale(d[1]);});
-
-                svg.select(".x.grid").call(xGrid);
-                svg.select(".y.grid").call(yGrid);
-                svg.select(".x.axis").call(xAxis);
-                svg.select(".y.axis").call(yAxis);
-
-                const data = svg.select("g.data");
-                const lines = data.selectAll("path").data(rxPlotData, function (d, i) {return i;});
-                lines.enter().append("path").attr("class", "line");
-                lines.attr('d', line);
-
-                samples++;
-            }
-
-            // timer initialization
-            GUI.interval_remove('lite_radio_pull');
-
-            // enable RC data pulling
-            GUI.interval_add('lite_radio_pull', get_rc_refresh_data, plotUpdateRate, true);
-        });
-
-        ConfigStorage.get('rx_refresh_rate', function (result) {
-            if (result.rxRefreshRate) {
-                rxRefreshRate.val(result.rxRefreshRate).change();
-            } else {
-                rxRefreshRate.change(); // start with default value
-            }
-        });
-
+        // timer initialization
+        GUI.interval_remove('lite_radio_pull');
+        // enable RC data pulling
+        var plotUpdateRate = 50;
+
+        GUI.interval_add('lite_radio_pull', get_rc_refresh_data, plotUpdateRate, true);
+        
         // Setup model for preview
-        tab.initModelPreview();
-        tab.renderModel();
 
-        // TODO: Combine two polls together
-        GUI.interval_add('lite_radio_pull_for_model_preview', tab.getLiteRadioData, 33, false);
 
+        GUI.interval_remove('status_pull');
         // status data pulled via separate timer with static speed
         GUI.interval_add('status_pull', function status_pull() {
             MSP.send_message(MSPCodes.MSP_STATUS);
         }, 250, true);
-
+        
         GUI.content_ready(callback);
     }
 };
-
-TABS.lite_radio.getLiteRadioData = function () {
-    MSP.send_message(MSPCodes.MSP_RC, false, false);
-};
-
-TABS.lite_radio.initModelPreview = function () {
-    this.keepRendering = true;
-    this.model = new Model($('.model_preview'), $('.model_preview canvas'));
-
-    this.useSuperExpo = false;
-    if (semver.gte(FC.CONFIG.apiVersion, "1.20.0") || (semver.gte(FC.CONFIG.apiVersion, "1.16.0") && FC.FEATURE_CONFIG.features.isEnabled('SUPEREXPO_RATES'))) {
-        this.useSuperExpo = true;
-    }
-
-    let useOldRateCurve = false;
-    if (FC.CONFIG.flightControllerIdentifier == 'CLFL' && semver.lt(FC.CONFIG.apiVersion, '2.0.0')) {
-        useOldRateCurve = true;
-    }
-    if (FC.CONFIG.flightControllerIdentifier == 'BTFL' && semver.lt(FC.CONFIG.flightControllerVersion, '2.8.0')) {
-        useOldRateCurve = true;
-    }
-
-    this.rateCurve = new RateCurve(useOldRateCurve);
-
-    $(window).on('resize', $.proxy(this.model.resize, this.model));
-};
-
-TABS.lite_radio.renderModel = function () {
-    if (this.keepRendering) { requestAnimationFrame(this.renderModel.bind(this)); }
-
-    if (!this.clock) { this.clock = new THREE.Clock(); }
-
-    if (FC.RC.channels[0] && FC.RC.channels[1] && FC.RC.channels[2]) {
-        const delta = this.clock.getDelta();
-
-        const roll  = delta * this.rateCurve.rcCommandRawToDegreesPerSecond(FC.RC.channels[0], FC.RC_TUNING.roll_rate, FC.RC_TUNING.RC_RATE, FC.RC_TUNING.RC_EXPO, this.useSuperExpo, this.deadband, FC.RC_TUNING.roll_rate_limit),
-            pitch = delta * this.rateCurve.rcCommandRawToDegreesPerSecond(FC.RC.channels[1], FC.RC_TUNING.pitch_rate, FC.RC_TUNING.rcPitchRate, FC.RC_TUNING.RC_PITCH_EXPO, this.useSuperExpo, this.deadband, FC.RC_TUNING.pitch_rate_limit),
-            yaw   = delta * this.rateCurve.rcCommandRawToDegreesPerSecond(FC.RC.channels[2], FC.RC_TUNING.yaw_rate, FC.RC_TUNING.rcYawRate, FC.RC_TUNING.RC_YAW_EXPO, this.useSuperExpo, this.yawDeadband, FC.RC_TUNING.yaw_rate_limit);
-
-        this.model.rotateBy(-degToRad(pitch), -degToRad(yaw), -degToRad(roll));
-    }
-};
-
 
 TABS.lite_radio.cleanup = function (callback) {
     $(window).off('resize', this.resize);
@@ -841,57 +249,3 @@ TABS.lite_radio.cleanup = function (callback) {
 
     if (callback) callback();
 };
-
-TABS.lite_radio.refresh = function (callback) {
-    const self = this;
-
-    GUI.tab_switch_cleanup(function () {
-        self.initialize();
-
-        if (callback) {
-            callback();
-        }
-    });
-};
-
-TABS.lite_radio.updateRcInterpolationParameters = function () {
-    if (semver.gte(FC.CONFIG.apiVersion, "1.20.0")) {
-        if ($('select[name="rcInterpolation-select"]').val() === '3') {
-            $('.tab-lite-radio .rc-interpolation-manual').show();
-        } else {
-            $('.tab-lite-radio .rc-interpolation-manual').hide();
-        }
-    }
-};
-
-function updateInterpolationView() {
-    $('.tab-lite-radio .rcInterpolation').hide();
-    $('.tab-lite-radio .rcSmoothing-derivative-cutoff').show();
-    $('.tab-lite-radio .rcSmoothing-input-cutoff').show();
-    $('.tab-lite-radio .rcSmoothing-derivative-type').show();
-    $('.tab-lite-radio .rcSmoothing-input-type').show();
-    $('.tab-lite-radio .rcSmoothing-derivative-manual').show();
-    $('.tab-lite-radio .rcSmoothing-input-manual').show();
-    if (semver.gte(FC.CONFIG.apiVersion, API_VERSION_1_42)) {
-        if (FC.RX_CONFIG.rcSmoothingDerivativeCutoff == 0 || FC.RX_CONFIG.rcSmoothingInputCutoff == 0) {
-            $('.tab-lite-radio .rcSmoothing-auto-smoothness').show();
-        }
-    }
-
-    if (FC.RX_CONFIG.rcSmoothingType == 0) {
-        $('.tab-lite-radio .rcInterpolation').show();
-        $('.tab-lite-radio .rcSmoothing-derivative-cutoff').hide();
-        $('.tab-lite-radio .rcSmoothing-input-cutoff').hide();
-        $('.tab-lite-radio .rcSmoothing-derivative-type').hide();
-        $('.tab-lite-radio .rcSmoothing-input-type').hide();
-        $('.tab-lite-radio .rcSmoothing-derivative-manual').hide();
-        $('.tab-lite-radio .rcSmoothing-input-manual').hide();
-        $('.tab-lite-radio .rcSmoothing-auto-smoothness').hide();
-    }
-    if (FC.RX_CONFIG.rcSmoothingDerivativeCutoff == 0) {
-        $('.tab-lite-radio .rcSmoothing-derivative-cutoff').hide();
-    }
-    if (FC.RX_CONFIG.rcSmoothingInputCutoff == 0) {
-        $('.tab-lite-radio .rcSmoothing-input-cutoff').hide();
-    }
-}
